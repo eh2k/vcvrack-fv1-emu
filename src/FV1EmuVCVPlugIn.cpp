@@ -337,8 +337,9 @@ void init(Plugin *p)
 	auto modelMyModule = Model::create<FV1EmuModule, FV1EmuModule::MyWidget>("eh", "FV-1.emu", "FV-1.emu", EFFECT_TAG);
 
 	plugin = p;
-	p->slug = TOSTRING(eh | FV - 1.emu);
-	p->version = TOSTRING(1.0);
+ 	plugin->slug = TOSTRING(SLUG);
+	plugin->version = TOSTRING(VERSION);
+	
 
 	p->addModel(modelMyModule);
 }
