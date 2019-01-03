@@ -34,7 +34,6 @@
 class FV1emu
 {
   private:
-
 	int ParseFloat(const std::string &param, std::map<std::string, int> &vars)
 	{
 		if (vars.find(param) == vars.end())
@@ -186,6 +185,8 @@ class FV1emu
 		replaceAll(line, ",,", ",0,");
 		replaceAll(line, ",", "\t");
 		replaceAll(line, "\t\t", "\t");
+		replaceAll(line, "\t|", "|");
+		replaceAll(line, "|\t", "|");
 
 		std::stringstream ss(line);
 
@@ -333,6 +334,7 @@ class FV1emu
 
 	void load(const std::string &file)
 	{
+		std::vector<std::vector<int>> fx;
 		std::ifstream infile(file);
 		std::stringstream stream;
 
@@ -365,7 +367,15 @@ class FV1emu
 		}
 		else
 		{
+#ifdef TEST
 			stream << file;
+#else
+			display = basename(file);
+			toupper(display);
+			display += "\n Error: File not found!";
+			fv1.loadFx(fx);
+			return;
+#endif
 		}
 
 		fxcode = stream.str();
@@ -401,10 +411,6 @@ class FV1emu
 
 		//stream.clear();
 		stream.seekg(0, std::ios::beg);
-		;
-
-		std::vector<std::vector<int>> fx;
-
 		std::map<std::string, int> VAR;
 
 		VAR[""] = 0;
@@ -456,6 +462,7 @@ class FV1emu
 
 		std::string line;
 		int i = 1;
+		int d = 0;
 
 		while (std::getline(stream, line))
 		{
@@ -463,6 +470,15 @@ class FV1emu
 			ReadLine(line, op, paramA, paramB, paramC, paramD);
 
 			//DEBUG(i, op, paramA, paramB, paramC, line);
+			auto tmp = line;
+			toupper(tmp);
+			auto pos = tmp.find("POT");
+			if (pos != std::string::npos && d < 3)
+			{
+				display += "\n";
+				display += line.substr(pos, std::min(line.size() - pos - 1, (size_t)24));
+				d++;
+			}
 
 			if (op.length() > 0 && *op.rbegin() == ':') //GOTO
 			{
@@ -482,18 +498,10 @@ class FV1emu
 
 		stream.clear();
 		stream.seekg(0, std::ios::beg);
-		int d = 0;
 		i = 1;
 
 		while (std::getline(stream, line))
 		{
-			if (line.find(";pot") == 0 && d < 3)
-			{
-				display += "\n";
-				display += line.substr(1, std::min((int)line.size() - 2, 24));
-				d++;
-			}
-
 			std::string op, paramA, paramB, paramC, paramD;
 			ReadLine(line, op, paramA, paramB, paramC, paramD);
 

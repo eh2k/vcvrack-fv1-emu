@@ -22,6 +22,7 @@
 #include <osdialog.h>
 #include <dirent.h>
 #include <iterator>
+#include <thread>
 
 using namespace rack;
 
@@ -65,7 +66,7 @@ struct FV1EmuModule : Module
 
 	FV1EmuModule() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS)
 	{
-		loadFx(assetPlugin(plugin, "fx/default.spn"));
+		loadFx(assetPlugin(plugin, "fx/demo.spn"));
 		info("FV1EmuModule()");
 	}
 
@@ -76,13 +77,13 @@ struct FV1EmuModule : Module
 
 	void step() override
 	{
-		if (lastPath.empty() == false)
+		if (filesInPath.size() > 0)
 		{
 			if (nextTrigger.process(params[FX_NEXT].value))
 			{
 				auto it = std::find(filesInPath.cbegin(), filesInPath.cend(), lastPath);
-				assert(it != filesInPath.cend());
-				if (++it == filesInPath.cend())
+				;
+				if (it == filesInPath.cend() || ++it == filesInPath.cend())
 					it = filesInPath.cbegin();
 
 				loadFx(*it);
@@ -91,15 +92,13 @@ struct FV1EmuModule : Module
 			if (prevTrigger.process(params[FX_PREV].value))
 			{
 				auto it = std::find(filesInPath.crbegin(), filesInPath.crend(), lastPath);
-				assert(it != filesInPath.crend());
-				if (++it == filesInPath.crend())
+
+				if (it == filesInPath.crend() || ++it == filesInPath.crend())
 					it = filesInPath.crbegin();
 
 				loadFx(*it);
 			}
 		}
-		else
-			lastPath = "No FX loaded :(";
 
 		//float deltaTime = engineGetSampleTime();
 		auto inL = inputs[INPUT_L].value;
@@ -143,10 +142,7 @@ struct FV1EmuModule : Module
 		if (json_t *lastPathJ = json_object_get(rootJ, "lastPath"))
 		{
 			std::string file = json_string_value(lastPathJ);
-			if (std::ifstream(file).good())
-			{
-				loadFx(file);
-			}
+			loadFx(file);
 		}
 	}
 
@@ -163,27 +159,29 @@ struct FV1EmuModule : Module
 
 		filesInPath.clear();
 		auto dir = stringDirectory(this->lastPath);
-		auto rep = opendir(dir.c_str());
-
-		while (auto dirp = readdir(rep))
+		if (auto rep = opendir(dir.c_str()))
 		{
-			std::string name = dirp->d_name;
-
-			std::size_t found = name.find(".spn", name.length() - 5);
-			if (found == std::string::npos)
-				found = name.find(".spn", name.length() - 5);
-
-			if (found != std::string::npos)
+			while (auto dirp = readdir(rep))
 			{
-#ifdef _WIN32
-				filesInPath.push_back(dir + "\\" + name);
-#else
-				filesInPath.push_back(dir + "/" + name);
-#endif
-			}
-		}
+				std::string name = dirp->d_name;
 
-		closedir(rep);
+				std::size_t found = name.find(".spn", name.length() - 5);
+				if (found == std::string::npos)
+					found = name.find(".spn", name.length() - 5);
+
+				if (found != std::string::npos)
+				{
+#ifdef _WIN32
+					filesInPath.push_back(dir + "\\" + name);
+#else
+					filesInPath.push_back(dir + "/" + name);
+#endif
+					info(name.c_str());
+				}
+			}
+
+			closedir(rep);
+		}
 
 		std::sort(filesInPath.begin(), filesInPath.end());
 		auto it = std::find(filesInPath.cbegin(), filesInPath.cend(), lastPath);
@@ -213,8 +211,7 @@ struct FV1EmuModule : Module
 		{
 			Menu *menu = ModuleWidget::createContextMenu();
 
-			auto *spacerLabel = new MenuLabel();
-			menu->addChild(spacerLabel);
+			menu->addChild(new MenuLabel());
 
 			auto module = dynamic_cast<FV1EmuModule *>(this->module);
 
@@ -229,6 +226,22 @@ struct FV1EmuModule : Module
 				}
 				osdialog_filters_free(filters);
 			}));
+
+			menu->addChild(new MyMenuItem("HELP...", [this]() {
+				std::thread t([&]() {
+					systemOpenBrowser("https://github.com/eh2k/fv1-emu/blob/master/README.md");
+				});
+				t.detach();
+			}));
+
+			menu->addChild(new MyMenuItem("Free DSP Programs...", [this]() {
+				std::thread t([&]() {
+					systemOpenBrowser("https://github.com/eh2k/fv1-emu/blob/master/README.md#free-dsp-programs");
+				});
+				t.detach();
+			}));
+
+			menu->addChild(new MenuLabel());
 
 			menu->addChild(new MyMenuItem("DEBUG", [this]() {
 				if (this->debugText == nullptr)
@@ -337,9 +350,8 @@ void init(Plugin *p)
 	auto modelMyModule = Model::create<FV1EmuModule, FV1EmuModule::MyWidget>("eh", "FV-1.emu", "FV-1.emu", EFFECT_TAG);
 
 	plugin = p;
- 	plugin->slug = TOSTRING(SLUG);
+	plugin->slug = TOSTRING(SLUG);
 	plugin->version = TOSTRING(VERSION);
-	
 
 	p->addModel(modelMyModule);
 }
