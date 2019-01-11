@@ -19,7 +19,6 @@ The [FV-1](http://www.spinsemi.com/knowledge_base/arch.html) emulating [VCV Rack
 * [CheatSheet](http://www.spinsemi.com/knowledge_base/cheat.html)
 * [SPINAsmUserManual.pdf](http://www.spinsemi.com/Products/datasheets/spn1001-dev/SPINAsmUserManual.pdf)
 * [AN-0001.pdf](http://www.spinsemi.com/Products/appnotes/spn1001/AN-0001.pdf)
-* [AN-0002.pdf](http://www.spinsemi.com/Products/appnotes/spn1001/AN-0002.pdf)
 
 #### Effects | DSP Programs
 * [OEM Programs by Keith Barr](http://www.spinsemi.com/get_spn.php?spn=oem1.zip&prodnum=SPN1001)
