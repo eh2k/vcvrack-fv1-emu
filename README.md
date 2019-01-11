@@ -1,5 +1,5 @@
 # FV-1.emu
-The [FV-1](http://www.spinsemi.com/knowledge_base/arch.html) emulating [VCV Rack](https://github.com/VCVRack) Module.
+The [Spin Semi FV-1 DSP chip](http://www.spinsemi.com/products.html) emulating [VCV Rack](https://github.com/VCVRack) Module.
 
 #### Installation | Download
 * Get it from [VCV Plugin Manager](https://vcvrack.com/plugins.html#EH)
