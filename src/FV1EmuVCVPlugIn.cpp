@@ -17,18 +17,13 @@
  */
 
 #include "FV1emu.hpp"
-#include <rack.hpp>
-#include <dsp/digital.hpp>
+#include "plugin.hpp"
 #include <osdialog.h>
 #include <dirent.h>
 #include <iterator>
 #include <thread>
 
-using namespace rack;
-
-Plugin *plugin;
-
-struct FV1EmuModule : Module
+struct  FV1EmuModule : Module
 {
 	enum ParamIds
 	{
@@ -61,25 +56,39 @@ struct FV1EmuModule : Module
 
 	FV1emu fx;
 
-	SchmittTrigger nextTrigger;
-	SchmittTrigger prevTrigger;
+	bool Debug = false;
+	std::ifstream infilex;
 
-	FV1EmuModule() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS)
+	dsp::SchmittTrigger nextTrigger;
+	dsp::SchmittTrigger prevTrigger;
+
+	FV1EmuModule()
 	{
-		loadFx(assetPlugin(plugin, "fx/demo.spn"));
-		info("FV1EmuModule()");
+		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS);
+		configParam(FX_PREV, 0.0f, 1.0f, 0.0f, "");
+		configParam(FX_NEXT, 0.0f, 1.0f, 0.0f, "");
+		configParam(POT0_PARAM, 0, 1.0, 0.0, "");
+		configParam(POT1_PARAM, 0, 1.0, 0.0, "");
+		configParam(POT2_PARAM, 0, 1.0, 0.0, "");
+		configParam(TPOT0_PARAM, -1.0f, 1.0f, 0.0f, "");
+		configParam(TPOT1_PARAM, -1.0f, 1.0f, 0.0f, "");
+		configParam(TPOT2_PARAM, -1.0f, 1.0f, 0.0f, "");
+		configParam(DRYWET_PARAM, -1.0f, 1.0f, 0.0f, "");
+
+		loadFx(asset::plugin(pluginInstance, "fx/demo.spn"));
+		INFO("FV1EmuModule()");
 	}
 
 	~FV1EmuModule()
 	{
-		info("~FV1EmuModule()");
+		INFO("~FV1EmuModule()");
 	}
 
-	void step() override
+	void process(const ProcessArgs& args) override
 	{
 		if (filesInPath.size() > 0)
 		{
-			if (nextTrigger.process(params[FX_NEXT].value))
+			if (nextTrigger.process(params[FX_NEXT].getValue()))
 			{
 				auto it = std::find(filesInPath.cbegin(), filesInPath.cend(), lastPath);
 				;
@@ -89,7 +98,7 @@ struct FV1EmuModule : Module
 				loadFx(*it);
 			}
 
-			if (prevTrigger.process(params[FX_PREV].value))
+			if (prevTrigger.process(params[FX_PREV].getValue()))
 			{
 				auto it = std::find(filesInPath.crbegin(), filesInPath.crend(), lastPath);
 
@@ -100,21 +109,21 @@ struct FV1EmuModule : Module
 			}
 		}
 
-		//float deltaTime = engineGetSampleTime();
-		auto inL = inputs[INPUT_L].value;
-		auto inR = inputs[INPUT_R].value;
+		//float deltaTime = args.sampleTime;
+		auto inL = inputs[INPUT_L].getVoltage();
+		auto inR = inputs[INPUT_R].getVoltage();
 		auto outL = 0.0f;
 		auto outR = 0.0f;
 
-		auto p0 = params[POT0_PARAM].value;
-		auto p1 = params[POT1_PARAM].value;
-		auto p2 = params[POT2_PARAM].value;
+		auto p0 = params[POT0_PARAM].getValue();
+		auto p1 = params[POT1_PARAM].getValue();
+		auto p2 = params[POT2_PARAM].getValue();
 
-		p0 += inputs[POT_0].value * 0.1f * params[TPOT0_PARAM].value;
-		p1 += inputs[POT_1].value * 0.1f * params[TPOT1_PARAM].value;
-		p2 += inputs[POT_2].value * 0.1f * params[TPOT2_PARAM].value;
+		p0 += inputs[POT_0].getVoltage() * 0.1f * params[TPOT0_PARAM].getValue();
+		p1 += inputs[POT_1].getVoltage() * 0.1f * params[TPOT1_PARAM].getValue();
+		p2 += inputs[POT_2].getVoltage() * 0.1f * params[TPOT2_PARAM].getValue();
 
-		float mix = params[DRYWET_PARAM].value;
+		float mix = params[DRYWET_PARAM].getValue();
 		float d = clamp(1.f - mix, 0.0f, 1.0f);
 		float w = clamp(1.f + mix, 0.0f, 1.0f);
 
@@ -125,11 +134,11 @@ struct FV1EmuModule : Module
 			outR *= 10;
 		}
 
-		outputs[OUTPUT_L].value = clamp(inputs[INPUT_L].value * d + outL * w, -10.0f, 10.0f);
-		outputs[OUTPUT_R].value = clamp(inputs[INPUT_R].value * d + outR * w, -10.0f, 10.0f);
+		outputs[OUTPUT_L].setVoltage(clamp(inputs[INPUT_L].getVoltage() * d + outL * w, -10.0f, 10.0f));
+		outputs[OUTPUT_R].setVoltage(clamp(inputs[INPUT_R].getVoltage() * d + outR * w, -10.0f, 10.0f));
 	}
 
-	json_t *toJson() override
+	json_t *dataToJson() override
 	{
 		json_t *rootJ = json_object();
 
@@ -137,7 +146,7 @@ struct FV1EmuModule : Module
 		return rootJ;
 	}
 
-	void fromJson(json_t *rootJ) override
+	void dataFromJson(json_t *rootJ) override
 	{
 		if (json_t *lastPathJ = json_object_get(rootJ, "lastPath"))
 		{
@@ -152,13 +161,11 @@ struct FV1EmuModule : Module
 
 	void loadFx(const std::string &file)
 	{
-		info(file.c_str());
-
 		this->lastPath = file;
 		this->fx.load(file);
 
 		filesInPath.clear();
-		auto dir = stringDirectory(this->lastPath);
+		auto dir = string::directory(this->lastPath);
 		if (auto rep = opendir(dir.c_str()))
 		{
 			while (auto dirp = readdir(rep))
@@ -176,7 +183,7 @@ struct FV1EmuModule : Module
 #else
 					filesInPath.push_back(dir + "/" + name);
 #endif
-					info(name.c_str());
+					INFO(name.c_str());
 				}
 			}
 
@@ -189,169 +196,161 @@ struct FV1EmuModule : Module
 
 		display = std::to_string(fxIndex) + ": " + this->fx.getDisplay();
 	}
-
-	struct MyWidget : ModuleWidget
-	{
-		struct MyMenuItem : MenuItem
-		{
-			std::function<void()> action;
-
-			MyMenuItem(const char *text, std::function<void()> action)
-			{
-				this->text = text;
-				this->action = action;
-			}
-			void onAction(EventAction &e) override
-			{
-				this->action();
-			}
-		};
-
-		Menu *createContextMenu() override
-		{
-			Menu *menu = ModuleWidget::createContextMenu();
-
-			menu->addChild(new MenuLabel());
-
-			auto module = dynamic_cast<FV1EmuModule *>(this->module);
-
-			menu->addChild(new MyMenuItem("LoadFx..", [module]() {
-				auto dir = module->lastPath.empty() ? assetLocal("") : stringDirectory(module->lastPath);
-				auto *filters = osdialog_filters_parse("FV1-FX Asm:spn");
-				char *path = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
-				if (path)
-				{
-					module->loadFx(path);
-					free(path);
-				}
-				osdialog_filters_free(filters);
-			}));
-
-			menu->addChild(new MyMenuItem("HELP...", [this]() {
-				std::thread t([&]() {
-					systemOpenBrowser("https://github.com/eh2k/fv1-emu/blob/master/README.md");
-				});
-				t.detach();
-			}));
-
-			menu->addChild(new MyMenuItem("Free DSP Programs...", [this]() {
-				std::thread t([&]() {
-					systemOpenBrowser("https://github.com/eh2k/fv1-emu/blob/master/README.md#free-dsp-programs");
-				});
-				t.detach();
-			}));
-
-			menu->addChild(new MenuLabel());
-
-			menu->addChild(new MyMenuItem("DEBUG", [this]() {
-				if (this->debugText == nullptr)
-				{
-					this->debugText = Widget::create<LedDisplayTextField>(Vec(box.size.x, 0));
-					this->debugText->box.size = Vec(250, box.size.y);
-					this->debugText->multiline = true;
-					this->addChild(debugText);
-				}
-				else
-				{
-					this->removeChild(this->debugText);
-					auto tmp = this->debugText;
-					this->debugText = nullptr;
-					delete tmp;
-				}
-			}));
-
-			return menu;
-		}
-
-		struct DisplayPanel : TransparentWidget
-		{
-			const std::string &text;
-			std::shared_ptr<Font> font;
-
-			DisplayPanel(const Vec &pos, const Vec &size, const std::string &display) : text(display)
-			{
-				box.pos = pos;
-				box.size = size;
-				font = Font::load(assetGlobal("res/fonts/ShareTechMono-Regular.ttf"));
-			}
-
-			void draw(NVGcontext *vg) override
-			{
-				nvgFontSize(vg, 12);
-				nvgFillColor(vg, nvgRGBAf(1, 1, 1, 1));
-
-				std::stringstream stream(text);
-				std::string line;
-				int y = 11;
-				while (std::getline(stream, line))
-				{
-					nvgText(vg, 5, y, line.c_str(), NULL);
-
-					if (y == 11)
-						y += 5;
-					y += 11;
-				}
-			}
-		};
-
-		LedDisplay *display;
-
-		MyWidget(FV1EmuModule *module) : ModuleWidget(module)
-		{
-			//setWidth(7);
-			setPanel(SVG::load(assetPlugin(plugin, "res/panel.svg")));
-
-			addChild(Widget::create<ScrewSilver>(Vec(RACK_GRID_WIDTH, 0)));
-			addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
-			addChild(Widget::create<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
-			addChild(Widget::create<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
-
-			auto display = new DisplayPanel(Vec(12, 31), Vec(100, 50), module->display);
-			addChild(display);
-
-			addParam(ParamWidget::create<TL1105>(Vec(105, 88), module, FX_PREV, 0.0f, 1.0f, 0.0f));
-			addParam(ParamWidget::create<TL1105>(Vec(130, 88), module, FX_NEXT, 0.0f, 1.0f, 0.0f));
-
-			addParam(ParamWidget::create<RoundLargeBlackKnob>(Vec(13, 115), module, POT0_PARAM, 0, 1.0, 0.0));
-			addParam(ParamWidget::create<RoundLargeBlackKnob>(Vec(64, 115), module, POT1_PARAM, 0, 1.0, 0.0));
-			addParam(ParamWidget::create<RoundLargeBlackKnob>(Vec(115, 115), module, POT2_PARAM, 0, 1.0, 0.0));
-
-			addParam(ParamWidget::create<Trimpot>(Vec(21, 169), module, TPOT0_PARAM, -1.0f, 1.0f, 0.0f));
-			addParam(ParamWidget::create<Trimpot>(Vec(72, 169), module, TPOT1_PARAM, -1.0f, 1.0f, 0.0f));
-			addParam(ParamWidget::create<Trimpot>(Vec(123, 169), module, TPOT2_PARAM, -1.0f, 1.0f, 0.0f));
-
-			addInput(Port::create<PJ301MPort>(Vec(18, 202), Port::INPUT, module, POT_0));
-			addInput(Port::create<PJ301MPort>(Vec(69, 202), Port::INPUT, module, POT_1));
-			addInput(Port::create<PJ301MPort>(Vec(120, 202), Port::INPUT, module, POT_2));
-
-			addParam(ParamWidget::create<RoundBlackKnob>(Vec(67, 235), module, DRYWET_PARAM, -1.0f, 1.0f, 0.0f));
-
-			addInput(Port::create<PJ301MPort>(Vec(10, 280), Port::INPUT, module, INPUT_L));
-			addInput(Port::create<PJ301MPort>(Vec(10, 320), Port::INPUT, module, INPUT_R));
-
-			addOutput(Port::create<PJ301MPort>(Vec(box.size.x - 30, 280), Port::OUTPUT, module, OUTPUT_L));
-			addOutput(Port::create<PJ301MPort>(Vec(box.size.x - 30, 320), Port::OUTPUT, module, OUTPUT_R));
-		}
-
-		TextField *debugText = nullptr;
-
-		void draw(NVGcontext *vg) override
-		{
-			if (debugText)
-				debugText->text = ((FV1EmuModule *)module)->fx.dumpState("\n");
-
-			ModuleWidget::draw(vg);
-		}
-	};
 };
 
-void init(Plugin *p)
+struct DisplayPanel : TransparentWidget
 {
-	auto modelMyModule = Model::create<FV1EmuModule, FV1EmuModule::MyWidget>("eh", "FV-1.emu", "FV-1.emu", EFFECT_TAG);
+	const std::string &text;
+	std::shared_ptr<Font> font;
 
-	plugin = p;
-	plugin->slug = TOSTRING(SLUG);
-	plugin->version = TOSTRING(VERSION);
+	DisplayPanel(const Vec &pos, const Vec &size, const std::string &display) : text(display)
+	{
+		box.pos = pos;
+		box.size = size;
+		font = APP->window->loadFont(asset::system("res/fonts/ShareTechMono-Regular.ttf"));
+	}
 
-	p->addModel(modelMyModule);
-}
+	void draw(NVGcontext *vg) override
+	{
+		nvgFontSize(vg, 12);
+		nvgFillColor(vg, nvgRGBAf(1, 1, 1, 1));
+
+		std::stringstream stream(text);
+		std::string line;
+		int y = 11;
+		while (std::getline(stream, line))
+		{
+			nvgText(vg, 5, y, line.c_str(), NULL);
+
+			if (y == 11)
+				y += 5;
+			y += 11;
+		}
+	}
+};
+
+struct DebugPanel : LedDisplayTextField
+{
+	FV1EmuModule *module;
+	void onButton(const event::Button &e) override
+	{
+		if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_LEFT && (e.mods & RACK_MOD_MASK) == 0)
+			module->Debug = false;
+		LedDisplayTextField::onButton(e);
+	}
+};
+
+struct PathMenuItem : MenuItem
+{
+	FV1EmuModule *module;
+	void onAction(const event::Action &e) override
+	{
+		auto dir = module->lastPath.empty() ? asset::user("") : string::directory(module->lastPath);
+		auto *filters = osdialog_filters_parse("FV1-FX Asm:spn");
+		char *path = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
+		if (path)
+		{
+			module->loadFx(path);
+			free(path);
+		}
+	}
+};
+
+struct DebugMenuItem : MenuItem
+{
+	FV1EmuModule *module;
+	void onAction(const event::Action &e) override
+	{
+		module->Debug = !module->Debug;
+	}
+	void step() override
+	{
+		rightText = ( module->Debug == true) ? "✔" : "";
+		MenuItem::step();
+	}
+};
+
+struct FV1EmuWidget : ModuleWidget
+{
+	DebugPanel *debugText;
+	void appendContextMenu(Menu *menu) override
+	{
+		auto module = dynamic_cast<FV1EmuModule *>(this->module);
+		assert(module);
+
+		menu->addChild(new MenuEntry);
+
+		PathMenuItem *pathItem = new PathMenuItem;
+		pathItem->text = "Select Input File...";
+		pathItem->module = module;
+		menu->addChild(pathItem);
+
+		DebugMenuItem *debugItem = new DebugMenuItem;
+		debugItem->text = "DEBUG";
+		debugItem->module = module;
+		menu->addChild(debugItem);
+	}
+
+	FV1EmuWidget(FV1EmuModule *module)
+	{
+		setModule(module);
+		setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/panel.svg")));
+
+		addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, 0)));
+		addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
+		addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
+		addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
+
+		if (module)
+		{
+			auto display = new DisplayPanel(Vec(12, 31), Vec(100, 50), module->display);
+			addChild(display);
+		}
+
+		addParam(createParam<TL1105>(Vec(105, 88), module, FV1EmuModule::FX_PREV));
+		addParam(createParam<TL1105>(Vec(130, 88), module, FV1EmuModule::FX_NEXT));
+
+		addParam(createParam<RoundLargeBlackKnob>(Vec(13, 115), module, FV1EmuModule::POT0_PARAM));
+		addParam(createParam<RoundLargeBlackKnob>(Vec(64, 115), module, FV1EmuModule::POT1_PARAM));
+		addParam(createParam<RoundLargeBlackKnob>(Vec(115, 115), module, FV1EmuModule::POT2_PARAM));
+
+		addParam(createParam<Trimpot>(Vec(21, 169), module, FV1EmuModule::TPOT0_PARAM));
+		addParam(createParam<Trimpot>(Vec(72, 169), module, FV1EmuModule::TPOT1_PARAM));
+		addParam(createParam<Trimpot>(Vec(123, 169), module, FV1EmuModule::TPOT2_PARAM));
+
+		addInput(createInput<PJ301MPort>(Vec(18, 202), module, FV1EmuModule::POT_0));
+		addInput(createInput<PJ301MPort>(Vec(69, 202), module, FV1EmuModule::POT_1));
+		addInput(createInput<PJ301MPort>(Vec(120, 202), module, FV1EmuModule::POT_2));
+
+		addParam(createParam<RoundBlackKnob>(Vec(67, 235), module, FV1EmuModule::DRYWET_PARAM));
+
+		addInput(createInput<PJ301MPort>(Vec(10, 280), module, FV1EmuModule::INPUT_L));
+		addInput(createInput<PJ301MPort>(Vec(10, 320), module, FV1EmuModule::INPUT_R));
+
+		addOutput(createOutput<PJ301MPort>(Vec(box.size.x - 30, 280), module, FV1EmuModule::OUTPUT_L));
+		addOutput(createOutput<PJ301MPort>(Vec(box.size.x - 30, 320), module, FV1EmuModule::OUTPUT_R));
+
+		debugText = new DebugPanel();
+		debugText->module = module;
+		debugText->box.size = box.size;
+		debugText->multiline = true;
+		debugText->visible = false;
+		debugText->setText("Turn on Debugging");
+		this->addChild(debugText);
+	}
+
+	void step() override
+	{
+		auto module = dynamic_cast<FV1EmuModule *>(this->module);
+		if (module)
+		{
+			debugText->visible = module->Debug;
+			if (module->Debug)
+				debugText->setText(module->fx.dumpState("\n"));
+		}
+		ModuleWidget::step();
+	}
+
+};
+
+Model *modelFV1Emu = createModel<FV1EmuModule, FV1EmuWidget>("FV-1emu");

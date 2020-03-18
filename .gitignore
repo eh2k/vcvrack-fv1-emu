@@ -1,8 +1,7 @@
-*.so
-*.log
-*.d
-*.o
-vs
-
-
-
+/build
+/dist
+/plugin.dylib
+/plugin.dll
+/plugin.so
+.DS_Store
+.vscode/
