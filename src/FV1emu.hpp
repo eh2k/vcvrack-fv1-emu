@@ -335,14 +335,16 @@ class FV1emu
 	void load(const std::string &file)
 	{
 		std::vector<std::vector<int>> fx;
-		std::ifstream infile(file);
 		std::stringstream stream;
 
-		if (infile.good())
+		FILE *pFile = fopen (file.c_str(), "r");
+		if (pFile)
 		{
 			std::string line;
-			while (std::getline(infile, line))
+			char buf[1024];
+			while (fgets(buf, 1024, pFile))
 			{
+				line.assign(buf);
 				bool isComment = false;
 
 				for (auto &c : line)
@@ -364,6 +366,7 @@ class FV1emu
 
 			this->display = basename(file);
 			toupper(display);
+			fclose(pFile);
 		}
 		else
 		{
