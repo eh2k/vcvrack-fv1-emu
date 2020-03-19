@@ -57,7 +57,7 @@ struct  FV1EmuModule : Module
 	FV1emu fx;
 
 	bool Debug = false;
-	std::ifstream infilex;
+	bool logParser = false;
 
 	dsp::SchmittTrigger nextTrigger;
 	dsp::SchmittTrigger prevTrigger;
@@ -162,6 +162,7 @@ struct  FV1EmuModule : Module
 	void loadFx(const std::string &file)
 	{
 		this->lastPath = file;
+		this->fx.logParser = this->logParser;
 		this->fx.load(file);
 
 		filesInPath.clear();
@@ -270,6 +271,21 @@ struct DebugMenuItem : MenuItem
 	}
 };
 
+struct logParserMenuItem : MenuItem
+{
+	FV1EmuModule *module;
+	void onAction(const event::Action &e) override
+	{
+		module->logParser = !module->logParser;
+	}
+	void step() override
+	{
+		rightText = ( module->logParser == true) ? "✔" : "";
+		MenuItem::step();
+	}
+};
+
+
 struct FV1EmuWidget : ModuleWidget
 {
 	DebugPanel *debugText;
@@ -289,6 +305,11 @@ struct FV1EmuWidget : ModuleWidget
 		debugItem->text = "DEBUG";
 		debugItem->module = module;
 		menu->addChild(debugItem);
+
+		logParserMenuItem *plogItem = new logParserMenuItem;
+		plogItem->text = "Parser log";
+		plogItem->module = module;
+		menu->addChild(plogItem);
 	}
 
 	FV1EmuWidget(FV1EmuModule *module)
