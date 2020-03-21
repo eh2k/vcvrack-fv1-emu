@@ -1,9 +1,8 @@
 {
-  "slug": "EH_modules",
-  "name": "EH_modules",
+  "slug": "FV-1emu",
+  "name": "FV-1.emu",
   "version": "1.0.0",
   "license": "GPL-3.0-only",
-  "brand": "EH_modules",
   "author": "Eduard Heidt",
   "authorEmail": "",
   "authorUrl": "https://github.com/eh2k",
