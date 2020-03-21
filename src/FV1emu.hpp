@@ -25,9 +25,9 @@
 #include <functional>
 #include <algorithm>
 #include <assert.h>
-#include <fstream>
 #include <memory>
 #include <codecvt>
+#include "rack.hpp"
 
 #include "FV1.hpp"
 
@@ -209,7 +209,7 @@ class FV1emu
 	}
 
 	template <typename A, typename B, typename C>
-	void DEBUG(int i, const std::string &op, const A &p1, const B &p2, const C &p3, const std::string &line)
+	void _DEBUG(int i, const std::string &op, const A &p1, const B &p2, const C &p3, const std::string &line)
 	{
 		std::ostringstream tmp;
 
@@ -227,19 +227,20 @@ class FV1emu
 
 		tmp << line << std::endl;
 
-		std::cout << tmp.str();
+		if (logParser)
+			INFO("%s", tmp.str().c_str());
 	}
 
 	template <typename A, typename B>
-	void DEBUG(int i, const std::string &op, const A &p1, const B &p2, const std::string &line)
+	void _DEBUG(int i, const std::string &op, const A &p1, const B &p2, const std::string &line)
 	{
-		DEBUG(i, op, p1, p2, "", line);
+		_DEBUG(i, op, p1, p2, "", line);
 	}
 
 	template <typename A>
-	void DEBUG(int i, const std::string &op, const A &p1, const std::string &line)
+	void _DEBUG(int i, const std::string &op, const A &p1, const std::string &line)
 	{
-		DEBUG(i, op, p1, "", "", line);
+		_DEBUG(i, op, p1, "", "", line);
 	}
 
 	std::string basename(const std::string &pathname)
@@ -315,6 +316,8 @@ class FV1emu
 	std::string fxcode;
 
   public:
+	bool logParser = false;
+
 	std::string getDisplay()
 	{
 		return this->display;
@@ -335,14 +338,16 @@ class FV1emu
 	void load(const std::string &file)
 	{
 		std::vector<std::vector<int>> fx;
-		std::ifstream infile(file);
 		std::stringstream stream;
 
-		if (infile.good())
+		FILE *pFile = fopen (file.c_str(), "r");
+		if (pFile)
 		{
 			std::string line;
-			while (std::getline(infile, line))
+			char buf[1024];
+			while (fgets(buf, 1024, pFile))
 			{
+				line.assign(buf);
 				bool isComment = false;
 
 				for (auto &c : line)
@@ -364,6 +369,7 @@ class FV1emu
 
 			this->display = basename(file);
 			toupper(display);
+			fclose(pFile);
 		}
 		else
 		{
@@ -385,31 +391,6 @@ class FV1emu
 		stream = std::stringstream();
 		stream << fxcode;
 
-#ifndef TEST
-		struct CoutRedirect
-		{
-			std::streambuf *old;
-			CoutRedirect(std::streambuf *to) : old(0)
-			{
-				// empty
-				old = std::cout.rdbuf(to);
-			}
-
-			~CoutRedirect()
-			{
-				if (old != 0)
-				{
-					std::cout.rdbuf(old);
-				}
-			}
-		};
-
-		auto logFile = file + ".log";
-		std::ofstream log(logFile, std::ios::out);
-		CoutRedirect pipe(log.rdbuf());
-#endif
-
-		//stream.clear();
 		stream.seekg(0, std::ios::beg);
 		std::map<std::string, int> VAR;
 
@@ -469,7 +450,7 @@ class FV1emu
 			std::string op, paramA, paramB, paramC, paramD;
 			ReadLine(line, op, paramA, paramB, paramC, paramD);
 
-			//DEBUG(i, op, paramA, paramB, paramC, line);
+			//_DEBUG(i, op, paramA, paramB, paramC, line);
 			auto tmp = line;
 			toupper(tmp);
 			auto pos = tmp.find("POT");
@@ -484,7 +465,7 @@ class FV1emu
 			{
 				replaceAll(op, ":", "");
 				VAR[op] = i;
-				DEBUG(-1, op, i, line);
+				_DEBUG(-1, op, i, line);
 			}
 			else if (op == "EQU" || paramA == "EQU" || op == "MEM" || paramA == "MEM" || op.length() == 0 || op[0] == ';' || op[0] == 13 || op[0] == 0)
 			{
@@ -505,12 +486,12 @@ class FV1emu
 			std::string op, paramA, paramB, paramC, paramD;
 			ReadLine(line, op, paramA, paramB, paramC, paramD);
 
-			//DEBUG(i, op, paramA, paramB, paramC, line);
+			//_DEBUG(i, op, paramA, paramB, paramC, line);
 
 			if (op.length() > 0 && *op.rbegin() == ':')
 			{
 				//GOTO REF
-				DEBUG(0, op, paramA, paramB, paramC, line);
+				_DEBUG(0, op, paramA, paramB, paramC, line);
 			}
 			else if (op == "SKP")
 			{
@@ -521,12 +502,12 @@ class FV1emu
 					b -= (int)fx.size() + 2;
 
 				fx.push_back({OP_SKP, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op.length() == 0 || op[0] == ';' || op[0] == 13 || op[0] == 0)
 			{
 				//Comment
-				DEBUG(0, op, paramA, paramB, paramC, line);
+				_DEBUG(0, op, paramA, paramB, paramC, line);
 			}
 			else if (op == "EQU" || paramA == "EQU")
 			{
@@ -536,7 +517,7 @@ class FV1emu
 				{
 					auto b = ParseFloat(paramB, VAR);
 
-					DEBUG(0, op, paramA, b, line);
+					_DEBUG(0, op, paramA, b, line);
 					VAR[a] = b;
 					VAR[std::string("-") + a] = -b;
 				}
@@ -544,7 +525,7 @@ class FV1emu
 				{
 					auto b = INT(paramB, VAR);
 
-					DEBUG(0, op, paramA, b, line);
+					_DEBUG(0, op, paramA, b, line);
 					VAR[a] = b;
 					VAR[std::string("-") + a] = -b;
 				}
@@ -552,17 +533,17 @@ class FV1emu
 			else if (op == "CLR")
 			{
 				fx.push_back({OP_AND, 0});
-				DEBUG(i++, op, paramA, paramB, paramC, line);
+				_DEBUG(i++, op, paramA, paramB, paramC, line);
 			}
 			else if (op == "NOT")
 			{
 				fx.push_back({OP_XOR, 0x00FFFFFF});
-				DEBUG(i++, op, paramA, paramB, paramC, line);
+				_DEBUG(i++, op, paramA, paramB, paramC, line);
 			}
 			else if (op == "ABSA")
 			{
 				fx.push_back({OP_MAXX, 0, 0});
-				DEBUG(i++, op, paramA, paramB, paramC, line);
+				_DEBUG(i++, op, paramA, paramB, paramC, line);
 			}
 			else if (op == "SOF")
 			{
@@ -570,28 +551,28 @@ class FV1emu
 				auto b = S10(paramB, VAR);
 
 				fx.push_back({OP_SOF, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "AND")
 			{
 				auto a = MASK(paramA, VAR);
 
 				fx.push_back({OP_AND, a});
-				DEBUG(i++, op, a, line);
+				_DEBUG(i++, op, a, line);
 			}
 			else if (op == "OR")
 			{
 				auto a = MASK(paramA, VAR);
 
 				fx.push_back({OP_OR, a});
-				DEBUG(i++, op, a, line);
+				_DEBUG(i++, op, a, line);
 			}
 			else if (op == "XOR")
 			{
 				auto a = MASK(paramA, VAR);
 
 				fx.push_back({OP_XOR, a});
-				DEBUG(i++, op, a, line);
+				_DEBUG(i++, op, a, line);
 			}
 			else if (op == "LOG")
 			{
@@ -599,7 +580,7 @@ class FV1emu
 				auto b = S10(paramB, VAR);
 
 				fx.push_back({OP_LOG, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "EXP")
 			{
@@ -607,7 +588,7 @@ class FV1emu
 				auto b = S10(paramB, VAR);
 
 				fx.push_back({OP_EXP, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "WRAX")
 			{
@@ -615,7 +596,7 @@ class FV1emu
 				auto b = S114(paramB, VAR);
 
 				fx.push_back({OP_WRAX, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "MAXX")
 			{
@@ -623,7 +604,7 @@ class FV1emu
 				auto b = S114(paramB, VAR);
 
 				fx.push_back({OP_MAXX, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "RDAX")
 			{
@@ -631,14 +612,14 @@ class FV1emu
 				auto b = S114(paramB, VAR);
 
 				fx.push_back({OP_RDAX, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "LDAX")
 			{
 				auto a = REGADDR(paramA, VAR);
 
 				fx.push_back({OP_RDFX, a, 0});
-				DEBUG(i++, op, a, line);
+				_DEBUG(i++, op, a, line);
 			}
 			else if (op == "RDFX")
 			{
@@ -646,7 +627,7 @@ class FV1emu
 				auto b = S114(paramB, VAR);
 
 				fx.push_back({OP_RDFX, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "WRLX")
 			{
@@ -654,7 +635,7 @@ class FV1emu
 				auto b = S114(paramB, VAR);
 
 				fx.push_back({OP_WRLX, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "WRHX")
 			{
@@ -662,14 +643,14 @@ class FV1emu
 				auto b = S114(paramB, VAR);
 
 				fx.push_back({OP_WRHX, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "MULX")
 			{
 				auto a = REGADDR(paramA, VAR);
 
 				fx.push_back({OP_MULX, a});
-				DEBUG(i++, op, a, line);
+				_DEBUG(i++, op, a, line);
 			}
 			else if (op == "WLDS")
 			{
@@ -678,7 +659,7 @@ class FV1emu
 				auto c = INT(paramC, VAR) & 0x7fff;
 
 				fx.push_back({OP_WLDS, a, b, c});
-				DEBUG(i++, op, a, b, c, line);
+				_DEBUG(i++, op, a, b, c, line);
 			}
 			else if (op == "WLDR")
 			{
@@ -696,14 +677,14 @@ class FV1emu
 					c = 0;
 
 				fx.push_back({OP_WLDR, a, b, c});
-				DEBUG(i++, op, a, b, c, line);
+				_DEBUG(i++, op, a, b, c, line);
 			}
 			else if (op == "JAM")
 			{
 				auto a = LFO1(paramA, VAR);
 
 				fx.push_back({OP_JAM, a});
-				DEBUG(i++, op, a, line);
+				_DEBUG(i++, op, a, line);
 			}
 			else if (op == "MEM" || paramA == "MEM")
 			{
@@ -719,7 +700,7 @@ class FV1emu
 
 				nextDelayAddress += len + 1;
 
-				DEBUG(0, op, address, len, line);
+				_DEBUG(0, op, address, len, line);
 			}
 			else if (op == "RDA")
 			{
@@ -727,14 +708,14 @@ class FV1emu
 				auto b = S19(paramB, VAR);
 
 				fx.push_back({OP_RDA, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "RMPA")
 			{
 				auto a = S19(paramA, VAR);
 
 				fx.push_back({OP_RMPA, a});
-				DEBUG(i++, op, a, line);
+				_DEBUG(i++, op, a, line);
 			}
 			else if (op == "WRA")
 			{
@@ -742,7 +723,7 @@ class FV1emu
 				auto b = S19(paramB, VAR);
 
 				fx.push_back({OP_WRA, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "WRAP")
 			{
@@ -750,7 +731,7 @@ class FV1emu
 				auto b = S19(paramB, VAR);
 
 				fx.push_back({OP_WRAP, a, b});
-				DEBUG(i++, op, a, b, line);
+				_DEBUG(i++, op, a, b, line);
 			}
 			else if (op == "CHO" && paramA == "RDA")
 			{
@@ -759,7 +740,7 @@ class FV1emu
 				auto c = DELADDR(paramD, VAR);
 
 				fx.push_back({OP_CHO_RDA, a, b, c});
-				DEBUG(i++, op + "-" + paramA, a, b, c, line);
+				_DEBUG(i++, op + "-" + paramA, a, b, c, line);
 			}
 			else if (op == "CHO" && paramA == "SOF")
 			{
@@ -768,19 +749,19 @@ class FV1emu
 				auto c = S15(paramD, VAR);
 
 				fx.push_back({OP_CHO_SOF, a, b, c});
-				DEBUG(i++, op + "-" + paramA, a, b, c, line);
+				_DEBUG(i++, op + "-" + paramA, a, b, c, line);
 			}
 			else if (op == "CHO" && paramA == "RDAL")
 			{
 				auto a = LFO2(paramB, VAR);
 
 				fx.push_back({OP_CHO_RDAL, a});
-				DEBUG(i++, op + "-" + paramA, a, line);
+				_DEBUG(i++, op + "-" + paramA, a, line);
 			}
 			else
 			{
-				//DEBUG(i++, op, paramA, paramB, paramC, line);
-				DEBUG(i, "#####FAIL ", op, line);
+				//_DEBUG(i++, op, paramA, paramB, paramC, line);
+				_DEBUG(i, "#####FAIL ", op, line);
 				assert(!line.c_str());
 			}
 		}
