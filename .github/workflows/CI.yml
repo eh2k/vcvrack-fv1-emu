@@ -17,7 +17,7 @@ jobs:
     - name: Build
       run: |
         docker run --rm -v $(pwd):/home/ -i rhrhunter/vcv-build-env:ubuntu18.04-rack1.1.6 make -C /home/
-        docker run --rm -v $(pwd):/home/ -i rhrhunter/vcv-build-env:ubuntu18.04-rack1.1.6 gcc -x c++ src/FV1emu.hpp -o test -DTEST -lstdc++
+        docker run --rm -v $(pwd):/home/ -i rhrhunter/vcv-build-env:ubuntu18.04-rack1.1.6 gcc -x c++ /home/src/FV1emu.hpp -o /home/test -DTEST -lstdc++
     - name: Test
       run: |
         chmod +x ./test
