@@ -27,9 +27,12 @@
 #include <assert.h>
 #include <memory>
 #include <codecvt>
-#include "rack.hpp"
 
 #include "FV1.hpp"
+
+#ifndef INFO
+#define INFO printf
+#endif
 
 class FV1emu
 {
@@ -227,7 +230,7 @@ class FV1emu
 
 		tmp << line << std::endl;
 
-		if (logParser)
+		if (logParser && !line.empty())
 			INFO("%s", tmp.str().c_str());
 	}
 
@@ -335,7 +338,7 @@ class FV1emu
 		return tmp;
 	}
 
-	void load(const std::string &file)
+	bool load(const std::string &file)
 	{
 		std::vector<std::vector<int>> fx;
 		std::stringstream stream;
@@ -380,7 +383,7 @@ class FV1emu
 			toupper(display);
 			display += "\n Error: File not found!";
 			fv1.loadFx(fx);
-			return;
+			return false;
 #endif
 		}
 
@@ -762,11 +765,12 @@ class FV1emu
 			{
 				//_DEBUG(i++, op, paramA, paramB, paramC, line);
 				_DEBUG(i, "#####FAIL ", op, line);
-				assert(!line.c_str());
+				return false;
 			}
 		}
 
 		fv1.loadFx(fx);
+		return true;
 	}
 
 	void run(float inL, float inR, float pot0, float pot1, float pot2, float &outL, float &outR)
@@ -774,3 +778,14 @@ class FV1emu
 		fv1.execute(inL, inR, pot0, pot1, pot2, outL, outR);
 	}
 };
+
+
+#ifdef TEST
+	int main (int argc, char *argv[])
+	{
+		printf("FV1emu\n");
+		FV1emu fx;
+		fx.logParser = true;
+		return !fx.load(argv[1]);
+	}
+#endif
