@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: CI
 
 on:
   push:
@@ -16,5 +16,4 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build
       run: |
-        ls -l
-        docker run --rm -v .:/fv1-emu/ -i rhrhunter/vcv-build-env:ubuntu18.04-rack1.1.6 make -C /fv1-emu/
+        docker run --rm -v $(pwd):/home/ -i rhrhunter/vcv-build-env:ubuntu18.04-rack1.1.6 make -C /home/
