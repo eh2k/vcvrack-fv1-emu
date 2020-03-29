@@ -338,7 +338,7 @@ class FV1emu
 		return tmp;
 	}
 
-	void load(const std::string &file)
+	bool load(const std::string &file)
 	{
 		std::vector<std::vector<int>> fx;
 		std::stringstream stream;
@@ -383,7 +383,7 @@ class FV1emu
 			toupper(display);
 			display += "\n Error: File not found!";
 			fv1.loadFx(fx);
-			return;
+			return false;
 #endif
 		}
 
@@ -765,11 +765,12 @@ class FV1emu
 			{
 				//_DEBUG(i++, op, paramA, paramB, paramC, line);
 				_DEBUG(i, "#####FAIL ", op, line);
-				assert(!line.c_str());
+				return false;
 			}
 		}
 
 		fv1.loadFx(fx);
+		return true;
 	}
 
 	void run(float inL, float inR, float pot0, float pot1, float pot2, float &outL, float &outR)
@@ -779,12 +780,12 @@ class FV1emu
 };
 
 
-extern "C"
-{
-	void PARSE_FX(const char* file)
+#ifdef TEST
+	int main (int argc, char *argv[])
 	{
+		printf("FV1emu\n");
 		FV1emu fx;
 		fx.logParser = true;
-		fx.load(file);
+		return !fx.load(argv[1]);
 	}
-}
+#endif
