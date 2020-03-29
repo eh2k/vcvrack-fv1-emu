@@ -23,5 +23,5 @@ The [Spin Semi FV-1 DSP chip](http://www.spinsemi.com/products.html) emulating [
 #### Effects | DSP Programs
 * [OEM Programs by Keith Barr](http://www.spinsemi.com/get_spn.php?spn=oem1.zip&prodnum=SPN1001)
 * [Free DSP Programs](http://www.spinsemi.com/programs.php)
-
+* https://mstratman.github.io/fv1-programs/
 
