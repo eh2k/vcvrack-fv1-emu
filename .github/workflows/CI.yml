@@ -20,5 +20,5 @@ jobs:
         docker run --rm -v $(pwd):/home/ -i rhrhunter/vcv-build-env:ubuntu18.04-rack1.1.6 gcc -x c++ /home/src/FV1emu.hpp -o /home/test -DTEST -lstdc++
     - name: Test
       run: |
-        chmod +x ./test
+        chmod u+x ./test
         ./test ./fx/demo.spn
