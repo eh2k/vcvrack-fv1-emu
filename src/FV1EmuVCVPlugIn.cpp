@@ -16,14 +16,13 @@
  *
  */
 
-#include "FV1emu.hpp"
 #include "plugin.hpp"
 #include <osdialog.h>
-#include <dirent.h>
 #include <iterator>
 #include <thread>
+#include "FV1emu.hpp"
 
-struct  FV1EmuModule : Module
+struct FV1EmuModule : Module
 {
 	enum ParamIds
 	{
@@ -84,7 +83,7 @@ struct  FV1EmuModule : Module
 		INFO("~FV1EmuModule()");
 	}
 
-	void process(const ProcessArgs& args) override
+	void process(const ProcessArgs &args) override
 	{
 		if (filesInPath.size() > 0)
 		{
@@ -95,7 +94,7 @@ struct  FV1EmuModule : Module
 				if (it == filesInPath.cend() || ++it == filesInPath.cend())
 					it = filesInPath.cbegin();
 
-				loadFx(*it);
+				loadFx(*it, false);
 			}
 
 			if (prevTrigger.process(params[FX_PREV].getValue()))
@@ -105,7 +104,7 @@ struct  FV1EmuModule : Module
 				if (it == filesInPath.crend() || ++it == filesInPath.crend())
 					it = filesInPath.crbegin();
 
-				loadFx(*it);
+				loadFx(*it, false);
 			}
 		}
 
@@ -159,20 +158,18 @@ struct  FV1EmuModule : Module
 	std::string lastPath;
 	std::vector<std::string> filesInPath;
 
-	void loadFx(const std::string &file)
+	void loadFx(const std::string &file, bool scanDir = true)
 	{
 		this->lastPath = file;
 		this->fx.logParser = this->logParser;
 		this->fx.load(file);
 
-		filesInPath.clear();
-		auto dir = string::directory(this->lastPath);
-		if (auto rep = opendir(dir.c_str()))
+		if (scanDir)
 		{
-			while (auto dirp = readdir(rep))
+			filesInPath.clear();
+			auto dir = string::directory(this->lastPath);
+			for (auto name : system::getEntriesRecursive(dir, 10))
 			{
-				std::string name = dirp->d_name;
-
 				std::size_t found = name.find(".spn", name.length() - 5);
 				if (found == std::string::npos)
 					found = name.find(".spn", name.length() - 5);
@@ -180,18 +177,17 @@ struct  FV1EmuModule : Module
 				if (found != std::string::npos)
 				{
 #ifdef _WIN32
-					filesInPath.push_back(dir + "\\" + name);
+					filesInPath.push_back(name);
 #else
-					filesInPath.push_back(dir + "/" + name);
+					filesInPath.push_back(name);
 #endif
 					INFO(name.c_str());
 				}
 			}
 
-			closedir(rep);
+			std::sort(filesInPath.begin(), filesInPath.end());		
 		}
 
-		std::sort(filesInPath.begin(), filesInPath.end());
 		auto it = std::find(filesInPath.cbegin(), filesInPath.cend(), lastPath);
 		auto fxIndex = it - filesInPath.cbegin();
 
@@ -266,7 +262,7 @@ struct DebugMenuItem : MenuItem
 	}
 	void step() override
 	{
-		rightText = ( module->Debug == true) ? "✔" : "";
+		rightText = (module->Debug == true) ? "✔" : "";
 		MenuItem::step();
 	}
 };
@@ -280,11 +276,10 @@ struct logParserMenuItem : MenuItem
 	}
 	void step() override
 	{
-		rightText = ( module->logParser == true) ? "✔" : "";
+		rightText = (module->logParser == true) ? "✔" : "";
 		MenuItem::step();
 	}
 };
-
 
 struct FV1EmuWidget : ModuleWidget
 {
@@ -371,7 +366,6 @@ struct FV1EmuWidget : ModuleWidget
 		}
 		ModuleWidget::step();
 	}
-
 };
 
 Model *modelFV1Emu = createModel<FV1EmuModule, FV1EmuWidget>("FV-1emu");

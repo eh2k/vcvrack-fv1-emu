@@ -31,7 +31,7 @@
 #include "FV1.hpp"
 
 #ifndef INFO
-#define INFO printf
+#define INFO(x) printf("%s\n",(x))
 #endif
 
 class FV1emu
@@ -72,6 +72,22 @@ class FV1emu
 			return vars[param];
 	}
 
+	static std::vector<std::string> SplitString (std::string s, std::string delimiter) 
+	{
+		size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+		std::string token;
+		std::vector<std::string> res;
+
+		while ((pos_end = s.find (delimiter, pos_start)) != std::string::npos) {
+			token = s.substr (pos_start, pos_end - pos_start);
+			pos_start = pos_end + delim_len;
+			res.push_back (token);
+		}
+
+		res.push_back (s.substr (pos_start));
+		return res;
+	}
+
 	int ParseInt(const std::string &param, std::map<std::string, int> &vars)
 	{
 		if (vars.find(param) == vars.end())
@@ -79,41 +95,40 @@ class FV1emu
 			std::string tmp;
 			if (param.find('/') != std::string::npos)
 			{
-				assert(!"ParseInt Devision");
-				return 0;
+     			auto a = 0;
+
+				for(auto tmp : SplitString(param, "/"))
+				{
+					if(a == 0)
+						a = ParseInt(tmp, vars);
+					else
+						a /= ParseInt(tmp, vars);
+				}
+				return a;
 			}
 			else if (param.find('+') != std::string::npos)
 			{
-				std::stringstream ss(param);
-				std::string tmp;
-
 				auto a = 0;
 
-				while (std::getline(ss, tmp, '+'))
+				for(auto tmp : SplitString(param, "+"))
 					a += ParseInt(tmp, vars);
 
 				return a;
 			}
 			else if (param.find('-') != std::string::npos)
 			{
-				std::stringstream ss(param);
-				std::string tmp;
-
 				auto a = 0;
 
-				while (std::getline(ss, tmp, '-'))
+				for(auto tmp : SplitString(param, "-"))
 					a -= ParseInt(tmp, vars);
 
 				return a;
 			}
 			else if (param.find('|') != std::string::npos)
 			{
-				std::stringstream ss(param);
-				std::string tmp;
-
 				auto a = 0;
 
-				while (std::getline(ss, tmp, '|'))
+				for(auto tmp : SplitString(param, "|"))
 					a |= ParseInt(tmp, vars);
 
 				return a;
@@ -228,10 +243,10 @@ class FV1emu
 		while (tmp.tellp() < 40)
 			tmp << " ";
 
-		tmp << line << std::endl;
+		tmp << line;
 
 		if (logParser && !line.empty())
-			INFO("%s", tmp.str().c_str());
+			INFO(tmp.str().c_str());
 	}
 
 	template <typename A, typename B>
@@ -340,6 +355,8 @@ class FV1emu
 
 	bool load(const std::string &file)
 	{
+		INFO(file.c_str());
+		
 		std::vector<std::vector<int>> fx;
 		std::stringstream stream;
 
