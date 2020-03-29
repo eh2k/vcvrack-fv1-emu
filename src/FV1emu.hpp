@@ -27,9 +27,12 @@
 #include <assert.h>
 #include <memory>
 #include <codecvt>
-#include "rack.hpp"
 
 #include "FV1.hpp"
+
+#ifndef INFO
+#define INFO printf
+#endif
 
 class FV1emu
 {
@@ -227,7 +230,7 @@ class FV1emu
 
 		tmp << line << std::endl;
 
-		if (logParser)
+		if (logParser && !line.empty())
 			INFO("%s", tmp.str().c_str());
 	}
 
@@ -774,3 +777,14 @@ class FV1emu
 		fv1.execute(inL, inR, pot0, pot1, pot2, outL, outR);
 	}
 };
+
+
+extern "C"
+{
+	void PARSE_FX(const char* file)
+	{
+		FV1emu fx;
+		fx.logParser = true;
+		fx.load(file);
+	}
+}
