@@ -90,8 +90,12 @@ const int CHO_LFO_SIN0 = 0;
 const int CHO_LFO_SIN1 = 1;
 const int CHO_LFO_RMP0 = 2;
 const int CHO_LFO_RMP1 = 3;
-const int CHO_LFO_COS0 = 4;
-const int CHO_LFO_COS1 = 5;
+const int CHO_LFO_4    = 4;
+const int CHO_LFO_5    = 5;
+const int CHO_LFO_6    = 6;
+const int CHO_LFO_7    = 7;
+const int CHO_LFO_COS0 = 8;
+const int CHO_LFO_COS1 = 9;
 const int CHO_SIN = 0x00;
 const int CHO_COS = 0x01;
 const int CHO_REG = 0x02;
@@ -633,9 +637,9 @@ class FV1
 			lfoval = this->rampLFO[0].getValue();
 		else if (lfo == CHO_LFO_RMP1)
 			lfoval = this->rampLFO[1].getValue();
-		else if (lfo == CHO_LFO_COS0)
+		else if (lfo == CHO_LFO_COS0 || lfo == CHO_LFO_4)
 			lfoval = this->sinLFO[0].getValue(true);
-		else if (lfo == CHO_LFO_COS1)
+		else if (lfo == CHO_LFO_COS1 || lfo == CHO_LFO_5)
 			lfoval = this->sinLFO[1].getValue(true);
 		else
 		{

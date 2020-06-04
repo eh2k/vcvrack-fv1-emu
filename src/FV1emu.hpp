@@ -299,7 +299,7 @@ class FV1emu
 	inline int LFO2(const std::string &param, std::map<std::string, int> &vars)
 	{
 		auto fp = ParseInt(param, vars);
-		return fp & 0x7;
+		return fp & 0xF;
 	}
 
 	inline int REGADDR(const std::string &param, std::map<std::string, int> &vars)
