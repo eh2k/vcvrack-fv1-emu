@@ -1,6 +1,7 @@
 const http = require("https")
 const fs = require('fs');
 const crypto = require('crypto');
+const zlib = require('zlib');
 
 const fetch = (url) => new Promise((resolve, reject) => {
     http.get(url, (res) => {
@@ -26,11 +27,12 @@ async function main() {
             console.log(hash)
             const buff = Buffer.from(tmp, 'utf-8');
             programs[i]["download"]["spn"]["sha256"] = hash;
+            programs[i]["download"]["spn"]["base64"] = buff.toString("base64");
             spn_programs.push(programs[i]);
 
-            fs.writeFile(hash + '.spn', tmp, function (err) {
-                if (err) return console.log(err);
-            });
+            //fs.writeFile(hash + '.spn', tmp, function (err) {
+            //    if (err) return console.log(err);
+            //});
         }
     }
     
@@ -38,6 +40,12 @@ async function main() {
     fs.writeFile('programs.json', programs_json, function (err) {
         if (err) return console.log(err);
     });
+
+    zlib.gzip(programs_json, function (_, result) {  
+        fs.writeFile('programs.json.gz', result, function (err) {
+            if (err) return console.log(err);
+        });
+      });
 }
 
 main();
