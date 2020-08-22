@@ -1,3 +1,4 @@
+![build](https://github.com/eh2k/fv1-emu/workflows/build/badge.svg?branch=master)
 # FV-1.emu
 The [Spin Semi FV-1 DSP chip](http://www.spinsemi.com/products.html) emulating [VCV Rack](https://github.com/VCVRack) Module.
 
@@ -24,4 +25,5 @@ The [Spin Semi FV-1 DSP chip](http://www.spinsemi.com/products.html) emulating [
 * [OEM Programs by Keith Barr](http://www.spinsemi.com/get_spn.php?spn=oem1.zip&prodnum=SPN1001)
 * [Free DSP Programs](http://www.spinsemi.com/programs.php)
 * https://mstratman.github.io/fv1-programs/
+* https://github.com/HolyCityAudio/SpinCAD-Designer
 

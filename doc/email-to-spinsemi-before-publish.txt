@@ -1,0 +1,35 @@
+From: Support at Spin <support@spinsemi.com> 
+Date: 1/3/19 20:00 (GMT+01:00) 
+To: xxx.x@yyy.zz
+Subject: RE: FV-1 emulation project (opensource) 
+
+Hi Eduard,
+
+We do not officially endorse any 3rd party products but we do not object to open source products that support the FV-1. Digital Larry made SpinCad http://holycityaudio.com/spincad-designer-2/ and released it open source and talks about it on our forum. Others share code, etc. 
+
+Best regards,
+Spin Semiconductor
+www.spinsemi.com
+
+-----Original Message-----
+From: xxx.x@yyy.zz
+Sent: Tuesday, January 1, 2019 12:31 PM
+To: info@spinsemi.com
+Subject: FV-1 emulation project (opensource)
+
+Hello Spin Semiconductor,
+
+I am the developer of the FV-1 emulator module for VCV Rack.
+
+I would like to release the module for free as a open source project.
+
+The Idea behind the project is reusing/developing FV-1 programs in a virtual environment (VCV Rack). Also understanding the internal functionality of the FV-1 from source code (I know the emulation is not completely correct).
+
+I would like to get your approval or any hints I have to consider publishing the project on github.
+
+At the moment, I have a lot of references to your knowledgebase/documentation.
+
+Thank you and best regards
+
+Eduard Heidt
+https://github.com/eh2k/fv1-emu

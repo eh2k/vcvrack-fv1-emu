@@ -1,0 +1,21 @@
+name: build
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    container: rhrhunter/vcv-build-env:ubuntu18.04-rack1.1.6
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: |
+        make
+    - name: Test
+      run: |
+        gcc -x c++ ./src/FV1emu.hpp -o ./test -DTEST -lstdc++
+        chmod +x ./test
+        ./test ./fx/demo.spn

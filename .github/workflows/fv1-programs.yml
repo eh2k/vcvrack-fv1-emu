@@ -1,0 +1,34 @@
+name: fv1-programs
+
+on:
+  push:
+    branches: [ fv1-programs ]
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  fv1-programs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+          ref: fv1-programs
+
+    - name: Setup Node.js environment
+      uses: actions/setup-node@v1.4.2
+
+    - name: dump_programs
+      run: |
+        mkdir public
+        cd public
+        node ../fetch_programs.js
+    
+    - name: cat
+      run: cat ./public/programs.json
+
+    - name: pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./public
