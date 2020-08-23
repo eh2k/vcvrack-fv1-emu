@@ -26,4 +26,5 @@ The [Spin Semi FV-1 DSP chip](http://www.spinsemi.com/products.html) emulating [
 * [Free DSP Programs](http://www.spinsemi.com/programs.php)
 * https://mstratman.github.io/fv1-programs/
 * https://github.com/HolyCityAudio/SpinCAD-Designer
-
+* ##### FV-1.emu FX-Bank
+  * [programs.json](https://raw.githubusercontent.com/eh2k/fv1-emu/gh-pages/programs.json): 157 fv1-programs generated from https://github.com/mstratman/fv1-programs 

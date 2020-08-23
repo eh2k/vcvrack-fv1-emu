@@ -334,8 +334,7 @@ struct FV1EmuModule : Module
 
         if (json_t *controlsJ = json_object_get(entryJ, "controls"))
         {
-            this->display += "\n";
-            //this->display += "\n";
+            this->display = std::to_string(i) + ": " + name + "\n";
             size_t i;
             json_t *entryJ;
             json_array_foreach(controlsJ, i, entryJ)
@@ -366,8 +365,8 @@ struct FV1EmuModule : Module
 
                 if (found != std::string::npos)
                 {
+                    name = string::absolutePath(name);
                     filesInPath.push_back(name);
-                    INFO(name.c_str());
                 }
             }
 
@@ -377,7 +376,8 @@ struct FV1EmuModule : Module
         auto it = std::find(filesInPath.cbegin(), filesInPath.cend(), lastPath);
         auto fxIndex = it - filesInPath.cbegin();
 
-        display = std::to_string(fxIndex) + ": " + this->fx.getDisplay();
+        this->display = std::to_string(fxIndex) + ": " + this->fx.getDisplay();
+        
     }
 };
 
@@ -430,19 +430,6 @@ struct ProgramsMenuItem : MenuItem
                 }
             }
         }
-        else if (this->text == "https://mstratman.github.io")
-        {
-            for (auto e : module->categories)
-            {
-                if (auto item = new ProgramsMenuItem)
-                {
-                    item->text = e.first;
-                    item->rightText = RIGHT_ARROW; //CHECKMARK(false);
-                    item->module = module;
-                    menu->addChild(item);
-                }
-            }
-        }
 
         return menu;
     }
@@ -461,6 +448,11 @@ struct OpenSpnMenuItem : MenuItem
             module->loadFx(path);
             free(path);
         }
+    }
+    void step() override
+    {
+        this->text = "Select SPN File...";
+        MenuItem::step();
     }
 };
 
@@ -589,16 +581,14 @@ struct DisplayPanel : TransparentWidget //LedDisplayChoice
 
         if (auto item = new OpenSpnMenuItem)
         {
-            item->text = "Select SPN-File...";
-            //item->rightText = RIGHT_ARROW; //CHECKMARK(false);
             item->module = module;
             menu->addChild(item);
+        }
 
-            if (auto item = new SelectBankMenuItem)
-            {
-                item->module = module;
-                menu->addChild(item);
-            }
+        if (auto item = new SelectBankMenuItem)
+        {
+            item->module = module;
+            menu->addChild(item);
         }
 
         if (module->programs.size() == 0)
@@ -678,22 +668,6 @@ struct DebugPanel : LedDisplayTextField
     }
 };
 
-struct PathMenuItem : MenuItem
-{
-    FV1EmuModule *module;
-    void onAction(const event::Action &e) override
-    {
-        auto dir = module->lastPath.empty() ? asset::user("") : string::directory(module->lastPath);
-        auto *filters = osdialog_filters_parse("FV1-FX Asm:spn");
-        char *path = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
-        if (path)
-        {
-            module->loadFx(path);
-            free(path);
-        }
-    }
-};
-
 struct FV1EmuWidget : ModuleWidget
 {
     DebugPanel *debugText;
@@ -704,8 +678,7 @@ struct FV1EmuWidget : ModuleWidget
 
         menu->addChild(new MenuEntry);
 
-        PathMenuItem *pathItem = new PathMenuItem;
-        pathItem->text = "Select SPN File...";
+        auto *pathItem = new OpenSpnMenuItem;
         pathItem->module = module;
         menu->addChild(pathItem);
 

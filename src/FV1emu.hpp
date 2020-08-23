@@ -383,10 +383,10 @@ public:
                 stream << std::endl;
             }
 
-            auto display = basename(file);
-            toupper(display);
+            auto fxname = basename(file);
+            toupper(fxname);
             fclose(pFile);
-            return loadFromSPN(display, stream.str());
+            return loadFromSPN(fxname, stream.str());
         }
         else
         {
@@ -394,14 +394,14 @@ public:
         }
     }
 
-    bool loadFromSPN(std::string display, const std::string &spnCode)
+    bool loadFromSPN(std::string fxname, const std::string &spnCode)
     {
         log = std::stringstream();
 
         std::vector<std::vector<int>> fx;
         std::string fxcode = spnCode;
 
-        this->display = display;
+        this->display = fxname;
         replaceAll(fxcode, "&#58;", ":");
 
         std::stringstream stream;
@@ -472,8 +472,8 @@ public:
             auto pos = tmp.find("POT");
             if (pos != std::string::npos && d < 3)
             {
-                display += "\n";
-                display += line.substr(pos, std::min(line.size() - pos - 1, (size_t)24));
+                this->display += "\n";
+                this->display += line.substr(pos, std::min(line.size() - pos - 1, (size_t)24));
                 d++;
             }
 
