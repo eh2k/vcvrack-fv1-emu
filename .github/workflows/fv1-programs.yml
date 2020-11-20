@@ -16,8 +16,6 @@ jobs:
           ref: fv1-programs
 
     - name: Setup Node.js environment
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       uses: actions/setup-node@v1.4.4
 
     - name: dump_programs
