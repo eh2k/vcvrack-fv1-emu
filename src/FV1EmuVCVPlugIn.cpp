@@ -36,6 +36,9 @@ struct FV1EmuModule : Module
         FX_PREV,
         FX_NEXT,
         DRYWET_PARAM,
+        TPOT_DRYWWET,
+        TPOT_LIN,
+        TPOT_RIN,
         NUM_PARAMS
     };
     enum InputIds
@@ -45,6 +48,7 @@ struct FV1EmuModule : Module
         POT_2,
         INPUT_L,
         INPUT_R,
+        CV_DRYWET,
         NUM_INPUTS
     };
     enum OutputIds
@@ -77,7 +81,10 @@ struct FV1EmuModule : Module
         configParam(TPOT0_PARAM, -1.0f, 1.0f, 0.0f, "");
         configParam(TPOT1_PARAM, -1.0f, 1.0f, 0.0f, "");
         configParam(TPOT2_PARAM, -1.0f, 1.0f, 0.0f, "");
+        configParam(TPOT_DRYWWET, -1.0f, 1.0f, 0.0f, "");
         configParam(DRYWET_PARAM, -1.0f, 1.0f, 0.0f, "");
+        configParam(TPOT_LIN, -1.0f, 1.0f, 0.0f, "");
+        configParam(TPOT_RIN, -1.0f, 1.0f, 0.0f, "");
 
         loadFx(asset::plugin(pluginInstance, "fx/demo.spn"));
         INFO("FV1EmuModule()");
@@ -210,8 +217,15 @@ struct FV1EmuModule : Module
         }
 
         //float deltaTime = args.sampleTime;
-        auto inL = inputs[INPUT_L].getVoltage();
-        auto inR = inputs[INPUT_R].getVoltage();
+        auto inL = inputs[INPUT_L].getVoltage() * (1 + params[TPOT_LIN].getValue());
+        auto inR = inputs[INPUT_R].getVoltage() * (1 + params[TPOT_RIN].getValue());
+
+        // if(inputs[INPUT_L].isConnected() == false)
+        //     inL = inR;
+
+        // if(inputs[INPUT_R].isConnected() == false)
+        //     inR = inL;
+
         auto outL = 0.0f;
         auto outR = 0.0f;
 
@@ -224,6 +238,7 @@ struct FV1EmuModule : Module
         p2 += inputs[POT_2].getVoltage() * 0.1f * params[TPOT2_PARAM].getValue();
 
         float mix = params[DRYWET_PARAM].getValue();
+        mix += inputs[CV_DRYWET].getVoltage() * params[TPOT_DRYWWET].getValue();
         float d = clamp(1.f - mix, 0.0f, 1.0f);
         float w = clamp(1.f + mix, 0.0f, 1.0f);
 
@@ -234,8 +249,8 @@ struct FV1EmuModule : Module
             outR *= 10;
         }
 
-        outputs[OUTPUT_L].setVoltage(clamp(inputs[INPUT_L].getVoltage() * d + outL * w, -10.0f, 10.0f));
-        outputs[OUTPUT_R].setVoltage(clamp(inputs[INPUT_R].getVoltage() * d + outR * w, -10.0f, 10.0f));
+        outputs[OUTPUT_L].setVoltage(clamp(inL * d + outL * w, -10.0f, 10.0f));
+        outputs[OUTPUT_R].setVoltage(clamp(inR * d + outR * w, -10.0f, 10.0f));
     }
 
     json_t *dataToJson() override
@@ -705,32 +720,47 @@ struct FV1EmuWidget : ModuleWidget
 
         if (module)
         {
-            auto display = new DisplayPanel(Vec(12, 31), Vec(200, 75), module);
+            auto display = new DisplayPanel(Vec(12, 10.5 * RACK_GRID_WIDTH), Vec(200, 75), module);
             addChild(display);
+            addParam(createParam<TL1105>(display->box.pos.plus(Vec(93, 53)), module, FV1EmuModule::FX_PREV));
+            addParam(createParam<TL1105>(display->box.pos.plus(Vec(118, 53)), module, FV1EmuModule::FX_NEXT));
         }
 
-        addParam(createParam<TL1105>(Vec(105, 88), module, FV1EmuModule::FX_PREV));
-        addParam(createParam<TL1105>(Vec(130, 88), module, FV1EmuModule::FX_NEXT));
+        auto d = (box.size.x - (RACK_GRID_WIDTH * 3)) / 3;
+        auto center = PJ301MPort().box.size.mult(-0.5);
 
-        addParam(createParam<RoundLargeBlackKnob>(Vec(13, 115), module, FV1EmuModule::POT0_PARAM));
-        addParam(createParam<RoundLargeBlackKnob>(Vec(64, 115), module, FV1EmuModule::POT1_PARAM));
-        addParam(createParam<RoundLargeBlackKnob>(Vec(115, 115), module, FV1EmuModule::POT2_PARAM));
+        addInput(createInput<PJ301MPort>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 0, RACK_GRID_WIDTH * 3)), module, FV1EmuModule::POT_0));
+        addInput(createInput<PJ301MPort>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 1, RACK_GRID_WIDTH * 3)), module, FV1EmuModule::POT_1));
+        addInput(createInput<PJ301MPort>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 2, RACK_GRID_WIDTH * 3)), module, FV1EmuModule::POT_2));
+        addInput(createInput<PJ301MPort>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 3, RACK_GRID_WIDTH * 3)), module, FV1EmuModule::CV_DRYWET));
 
-        addParam(createParam<Trimpot>(Vec(21, 169), module, FV1EmuModule::TPOT0_PARAM));
-        addParam(createParam<Trimpot>(Vec(72, 169), module, FV1EmuModule::TPOT1_PARAM));
-        addParam(createParam<Trimpot>(Vec(123, 169), module, FV1EmuModule::TPOT2_PARAM));
+        center = Trimpot().box.size.mult(-0.5);
 
-        addInput(createInput<PJ301MPort>(Vec(18, 202), module, FV1EmuModule::POT_0));
-        addInput(createInput<PJ301MPort>(Vec(69, 202), module, FV1EmuModule::POT_1));
-        addInput(createInput<PJ301MPort>(Vec(120, 202), module, FV1EmuModule::POT_2));
+        addParam(createParam<Trimpot>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 0, RACK_GRID_WIDTH * 5.25)), module, FV1EmuModule::TPOT0_PARAM));
+        addParam(createParam<Trimpot>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 1, RACK_GRID_WIDTH * 5.25)), module, FV1EmuModule::TPOT1_PARAM));
+        addParam(createParam<Trimpot>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 2, RACK_GRID_WIDTH * 5.25)), module, FV1EmuModule::TPOT2_PARAM));
+        addParam(createParam<Trimpot>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 3, RACK_GRID_WIDTH * 5.25)), module, FV1EmuModule::TPOT_DRYWWET));
 
-        addParam(createParam<RoundBlackKnob>(Vec(67, 235), module, FV1EmuModule::DRYWET_PARAM));
+        center = RoundBlackKnob().box.size.mult(-0.5);
 
-        addInput(createInput<PJ301MPort>(Vec(10, 280), module, FV1EmuModule::INPUT_L));
-        addInput(createInput<PJ301MPort>(Vec(10, 320), module, FV1EmuModule::INPUT_R));
+        addParam(createParam<RoundBlackKnob>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 0, RACK_GRID_WIDTH * 7.5)), module, FV1EmuModule::POT0_PARAM));
+        addParam(createParam<RoundBlackKnob>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 1, RACK_GRID_WIDTH * 7.5)), module, FV1EmuModule::POT1_PARAM));
+        addParam(createParam<RoundBlackKnob>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 2, RACK_GRID_WIDTH * 7.5)), module, FV1EmuModule::POT2_PARAM));       
+        addParam(createParam<RoundBlackKnob>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 3, RACK_GRID_WIDTH * 7.5)), module, FV1EmuModule::DRYWET_PARAM));
 
-        addOutput(createOutput<PJ301MPort>(Vec(box.size.x - 30, 280), module, FV1EmuModule::OUTPUT_L));
-        addOutput(createOutput<PJ301MPort>(Vec(box.size.x - 30, 320), module, FV1EmuModule::OUTPUT_R));
+
+        center = Trimpot().box.size.mult(-0.5);
+
+        addParam(createParam<Trimpot>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 0, RACK_GRID_WIDTH * 17.0)), module, FV1EmuModule::TPOT_LIN));
+        addParam(createParam<Trimpot>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 3, RACK_GRID_WIDTH * 17.0)), module, FV1EmuModule::TPOT_RIN));
+
+        center = PJ301MPort().box.size.mult(-0.5);
+
+        addInput(createInput<PJ301MPort>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 0, RACK_GRID_WIDTH * 19.5)), module, FV1EmuModule::INPUT_L));
+        addInput(createInput<PJ301MPort>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 3, RACK_GRID_WIDTH * 19.5)), module, FV1EmuModule::INPUT_R));
+
+        addOutput(createOutput<PJ301MPort>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 0, RACK_GRID_WIDTH * 22.5)), module, FV1EmuModule::OUTPUT_L));
+        addOutput(createOutput<PJ301MPort>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 3, RACK_GRID_WIDTH * 22.5)), module, FV1EmuModule::OUTPUT_R));
 
         debugText = new DebugPanel();
         debugText->module = module;
