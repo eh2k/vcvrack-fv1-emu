@@ -185,9 +185,7 @@ struct FV1EmuModule : Module
 
             if (prevTrigger.process(params[FX_PREV].getValue()))
             {
-                if (--this->selectedProgram > 0)
-                    this->selectedProgram = this->selectedProgram;
-                else
+                if (--this->selectedProgram <= 0)
                     this->selectedProgram = this->programs.size() - 1;
 
                 loadProgram(this->selectedProgram);
@@ -371,8 +369,8 @@ struct FV1EmuModule : Module
         if (scanDir)
         {
             filesInPath.clear();
-            auto dir = string::directory(this->lastPath);
-            for (auto name : system::getEntriesRecursive(dir, 10))
+            auto dir = system::getDirectory(this->lastPath);
+            for (auto name : system::getEntries(dir, 10))
             {
                 std::size_t found = name.find(".spn", name.length() - 5);
                 if (found == std::string::npos)
@@ -380,7 +378,7 @@ struct FV1EmuModule : Module
 
                 if (found != std::string::npos)
                 {
-                    name = string::absolutePath(name);
+                    name = system::getAbsolute(name);
                     filesInPath.push_back(name);
                 }
             }
@@ -455,7 +453,7 @@ struct OpenSpnMenuItem : MenuItem
     FV1EmuModule *module;
     void onAction(const event::Action &e) override
     {
-        auto dir = module->lastPath.empty() ? asset::user("") : string::directory(module->lastPath);
+        auto dir = module->lastPath.empty() ? asset::user("") : system::getDirectory(module->lastPath);
         auto *filters = osdialog_filters_parse("FV1-FX Asm:spn");
         char *path = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
         if (path)
@@ -490,12 +488,12 @@ struct logParserMenuItem : MenuItem
     FV1EmuModule *module;
     void onAction(const event::Action &e) override
     {
-        auto spn_parser_log = string::absolutePath(asset::plugin(pluginInstance, "spn_parser.log"));
+        auto spn_parser_log = system::getAbsolute(asset::plugin(pluginInstance, "spn_parser.log"));
 
         std::ofstream out(spn_parser_log.c_str());
         out << module->fx.log.str();
         out.close();
-        INFO(spn_parser_log.c_str());
+        INFO("%s", spn_parser_log.c_str());
         system::openBrowser(spn_parser_log);
     }
     void step() override
@@ -511,7 +509,7 @@ struct SelectBankMenuItem : MenuItem
     {
         if (true)
         {
-            auto dir = module->lastPath.empty() ? asset::user("") : string::directory(module->lastPath);
+            auto dir = module->lastPath.empty() ? asset::user("") : system::getDirectory(module->lastPath);
             auto *filters = osdialog_filters_parse("FV1-Programs:json");
             char *path = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
             if (path)
@@ -521,7 +519,7 @@ struct SelectBankMenuItem : MenuItem
 
                 if (module->programs.size() > 0)
                 {
-                    std::string message = string::f("FV1-programs have been loaded.\nReopen the context menu and select one of the %d FV1-program.", module->programs.size());
+                    std::string message = string::f("FV1-programs have been loaded.\nReopen the context menu and select one of the %d FV1-program.", (int)module->programs.size());
                     osdialog_message(OSDIALOG_INFO, OSDIALOG_OK, message.c_str());
                 }
                 else
@@ -546,7 +544,7 @@ struct SelectBankMenuItem : MenuItem
 
             if (module->programs.size() > 0)
             {
-                std::string message = string::f("FV1-programs have been downloaded.\nReopen the context menu and select one of the %d FV1-program.", module->programs.size());
+                std::string message = string::f("FV1-programs have been downloaded.\nReopen the context menu and select one of the %d FV1-program.", (int)module->programs.size());
                 osdialog_message(OSDIALOG_INFO, OSDIALOG_OK, message.c_str());
             }
             else
@@ -566,7 +564,6 @@ struct SelectBankMenuItem : MenuItem
 struct DisplayPanel : TransparentWidget //LedDisplayChoice
 {
     const std::string &text;
-    std::shared_ptr<Font> font;
     FV1EmuModule *module;
 
     DisplayPanel(const Vec &pos, const Vec &size, FV1EmuModule *module) : text(module->display)
@@ -574,7 +571,6 @@ struct DisplayPanel : TransparentWidget //LedDisplayChoice
         this->module = module;
         box.pos = pos;
         box.size = size;
-        font = APP->window->loadFont(asset::system("res/fonts/ShareTechMono-Regular.ttf"));
     }
 
     void onButton(const event::Button &e) override
@@ -655,31 +651,42 @@ struct DisplayPanel : TransparentWidget //LedDisplayChoice
 
     void draw(NVGcontext *vg) override
     {
-        nvgFontSize(vg, 12);
+        std::shared_ptr<Font> font = APP->window->loadFont(asset::system("res/fonts/ShareTechMono-Regular.ttf"));
+        nvgFontSize(vg, 11);
         nvgFillColor(vg, nvgRGBAf(1, 1, 1, 1));
+        if (font) {
+            nvgFontFaceId(vg, font->handle);
+            std::stringstream stream(text);
+            std::string line;
+            int y = 11;
+            while (std::getline(stream, line))
+            {
+                nvgText(vg, 5, y, line.c_str(), NULL);
 
-        std::stringstream stream(text);
-        std::string line;
-        int y = 11;
-        while (std::getline(stream, line))
-        {
-            nvgText(vg, 5, y, line.c_str(), NULL);
-
-            if (y == 11)
-                y += 5;
-            y += 11;
+                if (y == 11)
+                    y += 5;
+                y += 11;
+            }
         }
     }
 };
 
-struct DebugPanel : LedDisplayTextField
-{
+struct DebugPanel : LedDisplay {
+    LedDisplayTextField* textField = createWidget<LedDisplayTextField>(Vec(0, 0));
     FV1EmuModule *module;
+    DebugPanel() {
+	    textField->multiline = true;
+        textField->box.size = box.size;
+		addChild(textField);
+    }
+    void setText(std::string text) {
+        textField->text = text;
+    }
     void onButton(const event::Button &e) override
     {
         if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_LEFT && (e.mods & RACK_MOD_MASK) == 0)
             module->Debug = false;
-        LedDisplayTextField::onButton(e);
+        LedDisplay::onButton(e);
     }
 };
 
@@ -765,7 +772,6 @@ struct FV1EmuWidget : ModuleWidget
         debugText = new DebugPanel();
         debugText->module = module;
         debugText->box.size = box.size;
-        debugText->multiline = true;
         debugText->visible = false;
         debugText->setText("Turn on Debugging");
         this->addChild(debugText);

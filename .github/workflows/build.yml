@@ -8,7 +8,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    container: rhrhunter/vcv-build-env:ubuntu18.04-rack1.1.6
+    container: rhrhunter/vcv-build-env:ubuntu18.04-rack2
     steps:
     - uses: actions/checkout@v2
     - name: Build
