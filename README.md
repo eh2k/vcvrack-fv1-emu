@@ -1,4 +1,4 @@
-![build](https://github.com/eh2k/fv1-emu/workflows/build/badge.svg?branch=master)
+![build](https://github.com/eh2k/vcvrack-fv1-emu/workflows/build/badge.svg?branch=master)
 # FV-1.emu
 The [Spin Semi FV-1 DSP chip](http://www.spinsemi.com/products.html) emulating [VCV Rack](https://github.com/VCVRack) Module.
 
@@ -27,4 +27,4 @@ The [Spin Semi FV-1 DSP chip](http://www.spinsemi.com/products.html) emulating [
 * https://mstratman.github.io/fv1-programs/
 * https://github.com/HolyCityAudio/SpinCAD-Designer
 * ##### FV-1.emu FX-Bank
-  * [programs.json](https://raw.githubusercontent.com/eh2k/fv1-emu/gh-pages/programs.json): 157 fv1-programs generated from https://github.com/mstratman/fv1-programs 
+  * [programs.json](https://raw.githubusercontent.com/eh2k/vcvrack-fv1-emu/gh-pages/programs.json): 157 fv1-programs generated from https://github.com/mstratman/fv1-programs 

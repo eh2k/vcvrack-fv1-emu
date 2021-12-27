@@ -6,9 +6,9 @@
   "author": "Eduard Heidt",
   "authorEmail": "",
   "authorUrl": "https://github.com/eh2k",
-  "pluginUrl": "https://github.com/eh2k/fv1-emu",
-  "manualUrl": "https://github.com/eh2k/fv1-emu/blob/master/README.md",
-  "sourceUrl": "https://github.com/eh2k/fv1-emu.git",
+  "pluginUrl": "https://github.com/eh2k/vcvrack-fv1-emu",
+  "manualUrl": "https://github.com/eh2k/vcvrack-fv1-emu/blob/master/README.md",
+  "sourceUrl": "https://github.com/eh2k/vcvrack-fv1-emu.git",
   "donateUrl": "",
   "changelogUrl": "",
   "modules": [

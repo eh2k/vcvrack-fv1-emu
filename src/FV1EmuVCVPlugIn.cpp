@@ -390,7 +390,6 @@ struct FV1EmuModule : Module
         auto fxIndex = it - filesInPath.cbegin();
 
         this->display = std::to_string(fxIndex) + ": " + this->fx.getDisplay();
-        
     }
 };
 
@@ -507,49 +506,23 @@ struct SelectBankMenuItem : MenuItem
     FV1EmuModule *module;
     void onAction(const event::Action &e) override
     {
-        if (true)
+        auto dir = module->lastPath.empty() ? asset::user("") : system::getDirectory(module->lastPath);
+        auto *filters = osdialog_filters_parse("FV1-Programs:json");
+        char *path = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
+        if (path)
         {
-            auto dir = module->lastPath.empty() ? asset::user("") : system::getDirectory(module->lastPath);
-            auto *filters = osdialog_filters_parse("FV1-Programs:json");
-            char *path = osdialog_file(OSDIALOG_OPEN, dir.c_str(), NULL, filters);
-            if (path)
-            {
-                module->loadPrograms(path);
-                free(path);
-
-                if (module->programs.size() > 0)
-                {
-                    std::string message = string::f("FV1-programs have been loaded.\nReopen the context menu and select one of the %d FV1-program.", (int)module->programs.size());
-                    osdialog_message(OSDIALOG_INFO, OSDIALOG_OK, message.c_str());
-                }
-                else
-                {
-                    std::string message = string::f("Invalid JSON file loaded.");
-                    osdialog_message(OSDIALOG_INFO, OSDIALOG_OK, message.c_str());
-                }
-            }
-        }
-        else
-        {
-            //experimental Code -> Downloading FX-Banks directly from github... (nut used yet!!)
-
-            auto programs_json = module->programs_json;
-            //if (!system::isFile(programs_json))
-            {
-                float progress;
-                network::requestDownload("https://raw.githubusercontent.com/eh2k/fv1-emu/gh-pages/programs.json", programs_json, &progress);
-            }
-
-            module->loadPrograms(programs_json);
+            module->loadPrograms(path);
+            free(path);
 
             if (module->programs.size() > 0)
             {
-                std::string message = string::f("FV1-programs have been downloaded.\nReopen the context menu and select one of the %d FV1-program.", (int)module->programs.size());
+                std::string message = string::f("FV1-programs have been loaded.\nReopen the context menu and select one of the %d FV1-program.", (int)module->programs.size());
                 osdialog_message(OSDIALOG_INFO, OSDIALOG_OK, message.c_str());
             }
             else
             {
-                system::openBrowser("https://github.com/eh2k/fv1-emu#effects--dsp-programs");
+                std::string message = string::f("Invalid JSON file loaded.");
+                osdialog_message(OSDIALOG_INFO, OSDIALOG_OK, message.c_str());
             }
         }
     }
@@ -654,7 +627,8 @@ struct DisplayPanel : TransparentWidget //LedDisplayChoice
         std::shared_ptr<Font> font = APP->window->loadFont(asset::system("res/fonts/ShareTechMono-Regular.ttf"));
         nvgFontSize(vg, 11);
         nvgFillColor(vg, nvgRGBAf(1, 1, 1, 1));
-        if (font) {
+        if (font)
+        {
             nvgFontFaceId(vg, font->handle);
             std::stringstream stream(text);
             std::string line;
@@ -671,15 +645,18 @@ struct DisplayPanel : TransparentWidget //LedDisplayChoice
     }
 };
 
-struct DebugPanel : LedDisplay {
-    LedDisplayTextField* textField = createWidget<LedDisplayTextField>(Vec(0, 0));
+struct DebugPanel : LedDisplay
+{
+    LedDisplayTextField *textField = createWidget<LedDisplayTextField>(Vec(0, 0));
     FV1EmuModule *module;
-    DebugPanel() {
-	    textField->multiline = true;
+    DebugPanel()
+    {
+        textField->multiline = true;
         textField->box.size = box.size;
-		addChild(textField);
+        addChild(textField);
     }
-    void setText(std::string text) {
+    void setText(std::string text)
+    {
         textField->text = text;
     }
     void onButton(const event::Button &e) override
@@ -752,9 +729,8 @@ struct FV1EmuWidget : ModuleWidget
 
         addParam(createParam<RoundBlackKnob>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 0, RACK_GRID_WIDTH * 7.5)), module, FV1EmuModule::POT0_PARAM));
         addParam(createParam<RoundBlackKnob>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 1, RACK_GRID_WIDTH * 7.5)), module, FV1EmuModule::POT1_PARAM));
-        addParam(createParam<RoundBlackKnob>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 2, RACK_GRID_WIDTH * 7.5)), module, FV1EmuModule::POT2_PARAM));       
+        addParam(createParam<RoundBlackKnob>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 2, RACK_GRID_WIDTH * 7.5)), module, FV1EmuModule::POT2_PARAM));
         addParam(createParam<RoundBlackKnob>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 3, RACK_GRID_WIDTH * 7.5)), module, FV1EmuModule::DRYWET_PARAM));
-
 
         center = Trimpot().box.size.mult(-0.5);
 
