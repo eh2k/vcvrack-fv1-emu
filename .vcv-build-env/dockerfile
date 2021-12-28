@@ -1,0 +1,12 @@
+FROM ubuntu:16.04
+ENV RACK_DIR=/tmp/Rack-SDK
+WORKDIR /tmp
+
+RUN apt update && \
+    apt-get install -y git gdb curl cmake libx11-dev libglu1-mesa-dev \
+                       libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+                       zlib1g-dev libasound2-dev libgtk2.0-dev libjack-jackd2-dev jq \
+                       unzip wget
+
+ARG RACK_SDK_VER
+RUN curl https://vcvrack.com/downloads/Rack-SDK-2.git.588342d7-lin.zip -o Rack-SDK.zip && unzip Rack-SDK.zip
