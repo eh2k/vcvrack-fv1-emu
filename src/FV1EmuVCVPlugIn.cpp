@@ -21,7 +21,7 @@
 #include <iterator>
 #include <thread>
 #include <fstream>
-#include "FV1emu.hpp"
+#include "../fv1-emu/FV1emu.hpp"
 
 struct FV1EmuModule : Module
 {
@@ -468,20 +468,6 @@ struct OpenSpnMenuItem : MenuItem
     }
 };
 
-struct DebugMenuItem : MenuItem
-{
-    FV1EmuModule *module;
-    void onAction(const event::Action &e) override
-    {
-        module->Debug = !module->Debug;
-    }
-    void step() override
-    {
-        rightText = (module->Debug == true) ? "✔" : "";
-        MenuItem::step();
-    }
-};
-
 struct logParserMenuItem : MenuItem
 {
     FV1EmuModule *module;
@@ -560,8 +546,8 @@ struct DisplayPanel : TransparentWidget //LedDisplayChoice
 
     void onAction(const event::Action &e) override
     {
-
         ui::Menu *menu = createMenu();
+        menu->box.pos = APP->scene->getMousePos();
 
         if (auto item = new OpenSpnMenuItem)
         {
@@ -611,11 +597,6 @@ struct DisplayPanel : TransparentWidget //LedDisplayChoice
 
         menu->addChild(new MenuSeparator());
 
-        DebugMenuItem *debugItem = new DebugMenuItem;
-        debugItem->text = "DEBUG";
-        debugItem->module = module;
-        menu->addChild(debugItem);
-
         logParserMenuItem *plogItem = new logParserMenuItem;
         plogItem->text = "Parser log...";
         plogItem->module = module;
@@ -645,31 +626,8 @@ struct DisplayPanel : TransparentWidget //LedDisplayChoice
     }
 };
 
-struct DebugPanel : LedDisplay
-{
-    LedDisplayTextField *textField = createWidget<LedDisplayTextField>(Vec(0, 0));
-    FV1EmuModule *module;
-    DebugPanel()
-    {
-        textField->multiline = true;
-        textField->box.size = box.size;
-        addChild(textField);
-    }
-    void setText(std::string text)
-    {
-        textField->text = text;
-    }
-    void onButton(const event::Button &e) override
-    {
-        if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_LEFT && (e.mods & RACK_MOD_MASK) == 0)
-            module->Debug = false;
-        LedDisplay::onButton(e);
-    }
-};
-
 struct FV1EmuWidget : ModuleWidget
 {
-    DebugPanel *debugText;
     void appendContextMenu(Menu *menu) override
     {
         auto module = dynamic_cast<FV1EmuModule *>(this->module);
@@ -681,11 +639,6 @@ struct FV1EmuWidget : ModuleWidget
         pathItem->module = module;
         menu->addChild(pathItem);
 
-        DebugMenuItem *debugItem = new DebugMenuItem;
-        debugItem->text = "DEBUG";
-        debugItem->module = module;
-        menu->addChild(debugItem);
-
         logParserMenuItem *plogItem = new logParserMenuItem;
         plogItem->text = "Parser log...";
         plogItem->module = module;
@@ -695,7 +648,7 @@ struct FV1EmuWidget : ModuleWidget
     FV1EmuWidget(FV1EmuModule *module)
     {
         setModule(module);
-        setPanel(APP->window->loadSvg(asset::plugin(pluginInstance, "res/panel.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/panel.svg")));
 
         addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, 0)));
         addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
@@ -704,10 +657,10 @@ struct FV1EmuWidget : ModuleWidget
 
         if (module)
         {
-            auto display = new DisplayPanel(Vec(12, 10.5 * RACK_GRID_WIDTH), Vec(200, 75), module);
+            auto display = new DisplayPanel(Vec(10, 10 * RACK_GRID_WIDTH), Vec(box.size.x - 20, 80), module);
             addChild(display);
-            addParam(createParam<TL1105>(display->box.pos.plus(Vec(93, 53)), module, FV1EmuModule::FX_PREV));
-            addParam(createParam<TL1105>(display->box.pos.plus(Vec(118, 53)), module, FV1EmuModule::FX_NEXT));
+            addParam(createParam<TL1105>(display->box.pos.plus(Vec(95.5, 64.7)), module, FV1EmuModule::FX_PREV));
+            addParam(createParam<TL1105>(display->box.pos.plus(Vec(120.5, 64.7)), module, FV1EmuModule::FX_NEXT));
         }
 
         auto d = (box.size.x - (RACK_GRID_WIDTH * 3)) / 3;
@@ -744,25 +697,6 @@ struct FV1EmuWidget : ModuleWidget
 
         addOutput(createOutput<PJ301MPort>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 0, RACK_GRID_WIDTH * 22.5)), module, FV1EmuModule::OUTPUT_L));
         addOutput(createOutput<PJ301MPort>(center.plus(Vec(RACK_GRID_WIDTH * 1.5 + d * 3, RACK_GRID_WIDTH * 22.5)), module, FV1EmuModule::OUTPUT_R));
-
-        debugText = new DebugPanel();
-        debugText->module = module;
-        debugText->box.size = box.size;
-        debugText->visible = false;
-        debugText->setText("Turn on Debugging");
-        this->addChild(debugText);
-    }
-
-    void step() override
-    {
-        auto module = dynamic_cast<FV1EmuModule *>(this->module);
-        if (module)
-        {
-            debugText->visible = module->Debug;
-            if (module->Debug)
-                debugText->setText(module->fx.dumpState("\n"));
-        }
-        ModuleWidget::step();
     }
 };
 

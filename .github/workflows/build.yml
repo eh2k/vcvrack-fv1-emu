@@ -8,14 +8,14 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    container: rhrhunter/vcv-build-env:ubuntu18.04-rack2
     steps:
     - uses: actions/checkout@v2
+    - name: vcv-build-env
+      run: |
+          cd .vcv-build-env
+          docker build . -t vcv-build-env
     - name: Build
       run: |
-        make
-    - name: Test
-      run: |
-        gcc -x c++ ./src/FV1emu.hpp -o ./test -DTEST -lstdc++
-        chmod +x ./test
-        ./test ./fx/demo.spn
+        git submodule update --init --recursive
+        docker run --rm -v $(realpath .):/home/ --workdir=/home/ vcv-build-env make
+        ls -la ./build
